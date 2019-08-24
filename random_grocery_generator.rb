@@ -1,57 +1,90 @@
-require_relative 'grocer'
-
-def items
-	[
-		{"AVOCADO" => {:price => 3.00, :clearance => true}},
-		{"KALE" => {:price => 3.00, :clearance => false}},
-		{"BLACK_BEANS" => {:price => 2.50, :clearance => false}},
-		{"ALMONDS" => {:price => 9.00, :clearance => false}},
-		{"TEMPEH" => {:price => 3.00, :clearance => true}},
-		{"CHEESE" => {:price => 6.50, :clearance => false}},
-		{"BEER" => {:price => 13.00, :clearance => false}},
-		{"PEANUTBUTTER" => {:price => 3.00, :clearance => true}},
-		{"BEETS" => {:price => 2.50, :clearance => false}}
-	]
+def consolidate_cart(cart)
+  hash = {}
+  cart.each do |item_hash|
+    item_hash.each do |name, price_hash|
+      if hash[name].nil?
+        hash[name] = price_hash.merge({:count => 1})
+      else
+        hash[name][:count] += 1
+      end
+    end
+  end
+  hash
 end
 
-def coupons
-	[
-		{:item => "AVOCADO", :num => 2, :cost => 5.00},
-		{:item => "BEER", :num => 2, :cost => 20.00},
-		{:item => "CHEESE", :num => 3, :cost => 15.00}
-	]
+def apply_coupons(cart, coupons)
+  hash = cart
+  coupons.each do |coupon_hash|
+    # add coupon to cart
+    item = coupon_hash[:item]
+
+    if !hash[item].nil? && hash[item][:count] >= coupon_hash[:num]
+      temp = {"#{item} W/COUPON" => {
+        :price => coupon_hash[:cost],
+        :clearance => hash[item][:clearance],
+        :count => 1
+        }
+      }
+      
+      if hash["#{item} W/COUPON"].nil?
+        hash.merge!(temp)
+      else
+        hash["#{item} W/COUPON"][:count] += 1
+        #hash["#{item} W/COUPON"][:price] += coupon_hash[:cost]
+      end
+      
+      hash[item][:count] -= coupon_hash[:num]
+    end
+  end
+  hash
 end
 
-def generate_cart
-	[].tap do |cart|
-		rand(20).times do
-			cart.push(items.sample)
-		end
-	end
+def apply_clearance(cart)
+  cart.each do |item, price_hash|
+    if price_hash[:clearance] == true
+      price_hash[:price] = (price_hash[:price] * 0.8).round(2)
+    end
+  end
+  cart
 end
 
-def generate_coupons
-	[].tap do |c|
-		rand(2).times do
-			c.push(coupons.sample)
-		end
-	end
+def checkout(items, coupons)
+  cart = consolidate_cart(items)
+  cart1 = apply_coupons(cart, coupons)
+  cart2 = apply_clearance(cart1)
+  
+  total = 0
+  
+  cart2.each do |name, price_hash|
+    total += price_hash[:price] * price_hash[:count]
+  end
+  
+  total > 100 ? total * 0.9 : total
+  
 end
 
-cart = generate_cart
-coupons = generate_coupons
+items =   [
+      {"AVOCADO" => {:price => 3.00, :clearance => true}},
+      {"AVOCADO" => {:price => 3.00, :clearance => true}},
+      {"AVOCADO" => {:price => 3.00, :clearance => true}},
+      {"AVOCADO" => {:price => 3.00, :clearance => true}},
+      {"AVOCADO" => {:price => 3.00, :clearance => true}},
+      {"KALE" => {:price => 3.00, :clearance => false}},
+      {"BLACK_BEANS" => {:price => 2.50, :clearance => false}},
+      {"ALMONDS" => {:price => 9.00, :clearance => false}},
+      {"TEMPEH" => {:price => 3.00, :clearance => true}},
+      {"CHEESE" => {:price => 6.50, :clearance => false}},
+      {"BEER" => {:price => 13.00, :clearance => false}},
+      {"PEANUTBUTTER" => {:price => 3.00, :clearance => true}},
+      {"BEETS" => {:price => 2.50, :clearance => false}},
+      {"SOY MILK" => {:price => 4.50, :clearance => true}}
+    ]
 
-puts "Items in cart"
-cart.each do |item|
-	puts "Item: #{item.keys.first}"
-	puts "Price: #{item[item.keys.first][:price]}"
-	puts "Clearance: #{item[item.keys.first][:clearance]}"
-	puts "=" * 10
-end
+coupons = [
+      {:item => "AVOCADO", :num => 2, :cost => 5.00},
+      {:item => "AVOCADO", :num => 2, :cost => 5.00},
+      {:item => "BEER", :num => 2, :cost => 20.00},
+      {:item => "CHEESE", :num => 2, :cost => 15.00}
+    ]
 
-puts "Coupons on hand"
-coupons.each do |coupon|
-	puts "Get #{coupon[:item].capitalize} for #{coupon[:cost]} when you by #{coupon[:num]}"
-end
-
-puts "Your total is #{checkout(cart: cart, coupons: coupons)}"
+checkout(items, coupons)
